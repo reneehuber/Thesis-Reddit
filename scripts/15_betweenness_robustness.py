@@ -1,8 +1,4 @@
 """
-16_betweenness_robustness.py
-
-Run AFTER 12_merge_analysis_file.py (needs ANALYSIS/<sub>_analysis.csv).
-
 Tests whether the NEGATIVE betweenness coefficient in Model 3 is a genuine
 suppression effect or an artifact of multicollinearity with out_degree (r=0.77).
 
@@ -10,14 +6,12 @@ Starting from the M2 base (centrality + dummies + interactions), it adds the
 activity controls one at a time and reports the betweenness coefficient at each
 step, then shows the full model WITH and WITHOUT out_degree.
 
-HOW TO READ IT
+
   - If betweenness is already negative once comment_count / tenure enter, and
     stays clearly negative in "FULL controls EXCEPT out_degree", the suppression
-    effect is REAL -> keep the brokerage-penalty claim, cite this check.
+    effect is REAL 
   - If it only turns negative once out_degree is added, the sign reversal is
-    largely a collinearity artifact -> soften to a tentative pattern.
-
-SEs are HC3 (heteroskedasticity-robust), matching the thesis.
+    largely a collinearity artifact 
 """
 
 import numpy as np
@@ -110,4 +104,26 @@ for dv in ["log_unique_repliers", "ihs_mean_score"]:
 print("\nVerdict:")
 print("  Negative already WITHOUT out_degree  -> suppression is real, keep the claim.")
 print("  Negative ONLY WITH out_degree present -> collinearity artifact, soften the claim.")
+
+# Save results to CSV for table generation in script 14
+rows = []
+for dv in ["log_unique_repliers", "ihs_mean_score"]:
+    for tag, extra in LADDER:
+        cols = BASE + extra
+        mask = df[dv].notna() & df[cols].notna().all(axis=1)
+        res  = fit(df.loc[mask, dv], df.loc[mask, cols])
+        b    = res.params["betweenness_z"]
+        p    = res.pvalues["betweenness_z"]
+        v    = vif_of(df.loc[mask, cols], "betweenness_z")
+        rows.append({
+            "dv":    dv,
+            "spec":  tag,
+            "coef":  round(b, 4),
+            "pval":  round(p, 6),
+            "vif":   round(v, 1),
+        })
+
+pd.DataFrame(rows).to_csv("REGRESSION_RESULTS/betweenness_suppression.csv", index=False)
+print("Saved REGRESSION_RESULTS/betweenness_suppression.csv")
+
 print("\n[DONE]")
