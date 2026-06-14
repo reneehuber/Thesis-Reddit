@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-# Generates all LaTeX tables reported in the thesis.
-
+# Generates all LaTeX tables reported in the thesis
 
 REGRESSION_FOLDER = Path("REGRESSION_RESULTS")
 ANALYSIS_FOLDER   = Path("ANALYSIS")
@@ -15,7 +14,7 @@ REFERENCE   = "instantpot"
 CENTRALITY  = ["betweenness", "eigenvector", "pagerank"]
 DV_LABELS   = {
     "log_unique_repliers": "Log Unique Repliers",
-    "log_mean_score":      "Log Mean Score",
+    "ihs_mean_score":      "IHS Mean Score",
 }
 CAT_MAP = {
     "airfryer":     "Kitchen",
@@ -324,8 +323,8 @@ def make_results_table(dv, caption, label, filename):
 
 make_results_table("log_unique_repliers", "OLS Regression Results: Log Unique Repliers",
                    "results_ur", "table4_log_unique_repliers.tex")
-make_results_table("log_mean_score",      "OLS Regression Results: Log Mean Score",
-                   "results_ms", "table5_log_mean_score.tex")
+make_results_table("ihs_mean_score",      "OLS Regression Results: IHS Mean Score",
+                   "results_ms", "table5_ihs_mean_score.tex")
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -373,11 +372,11 @@ save_tex("table6_lrt_summary.tex", "\n".join(lines))
 def make_appendix_table(model_key, caption, label, filename, note_extra=""):
     print(f"Generating {filename} ...")
     for dv, dv_label in DV_LABELS.items():
-        dv_fn = filename.replace(".tex", "_" + dv.replace("log_", "") + ".tex")
+        dv_fn = filename.replace(".tex", "_" + dv.replace("log_", "").replace("ihs_", "") + ".tex")
         lines = [
             r"\begin{table}[htbp]", r"\centering",
             r"\caption{" + caption + " --- " + dv_label + "}",
-            r"\label{tab:" + label + "_" + dv.replace("log_", "") + "}",
+            r"\label{tab:" + label + "_" + dv.replace("log_", "").replace("ihs_", "") + "}",
             r"\small", r"\begin{tabular}{lccccc}", r"\hline\hline",
             r"\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{$p$-value} & \textbf{Sig.} & \textbf{VIF} \\",
         ]
@@ -451,7 +450,7 @@ print("Generating Appendix F - Subreddit Fixed Effects ...")
 DUMMY_VARS = ["Roborock", "RobotVacuums", "airfryer", "roomba"]
 DV_DISPLAY = {
     "log_unique_repliers": "Log Unique Repliers",
-    "log_mean_score":      "Log Mean Score",
+    "ihs_mean_score":      "IHS Mean Score",
 }
 CENT_DISPLAY = {
     "betweenness": "Betweenness",
@@ -511,7 +510,7 @@ print(f"\n[DONE] All tables saved to {OUTPUT_FOLDER}/")
 print("\nOverleaf preamble: \\usepackage{booktabs}")
 print("\nMain body — insert in results section:")
 for t in ["table1_descriptives", "table2_network_summary", "table3_correlations",
-          "table4_log_unique_repliers", "table5_log_mean_score", "table6_lrt_summary"]:
+          "table4_log_unique_repliers", "table5_ihs_mean_score", "table6_lrt_summary"]:
     print(f"  \\input{{{t}}}")
 print("\nAppendix:")
 for t in ["tableA1_model1_full_unique_repliers", "tableA1_model1_full_mean_score",

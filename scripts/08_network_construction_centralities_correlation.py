@@ -65,6 +65,8 @@ def compute_centrality(G, name):
     betweenness = nx.betweenness_centrality(G, normalized=True)
 
     try:
+        # Left eigenvector — measures prestige based on who replies to you,
+        # consistent with the thesis definition of structural embeddedness
         eigenvector = nx.eigenvector_centrality(G, max_iter=1000, tol=1e-6)
     except nx.PowerIterationFailedConvergence:
         # Falls back to in-degree centrality if eigenvector fails to converge,

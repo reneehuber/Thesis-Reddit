@@ -21,15 +21,15 @@ warnings.filterwarnings("ignore")
 #     — tests whether the centrality effect persists after accounting for participation intensity and content characteristics
 #     — base is selected via likelihood ratio test (LRT): if M2 fits significantly better than M1 (p < 0.05), M2 is used as the base for M3; otherwise M1 is used
 #
-# Both DVs are log-transformed prior to estimation:
+# DV transformations prior to estimation:
 #   log_unique_repliers = log(unique_repliers + 1)
-#   log_mean_score = log(mean_score - min(mean_score) + 1)
+#   ihs_mean_score      = arcsinh(mean_score)
 #
-# Centrality measures are z-score standardised across the pooled dataset so coefficients reflect the change in the DV associated with a one standard deviation increase in centrality
-# -> makes effect sizes comparable across the three measures
+# Centrality measures are z-score standardised across the pooled dataset, so coefficients reflect the change in the DV associated with a one standard deviation increase in centrality
+# -> makes effect sizes comparable across the three measures.
 #
-# Reference subreddit: r/instantpot (largest community)
-# All estimates are relative to this baseline
+# Reference subreddit: r/instantpot (largest community).
+# All estimates are relative to this baseline.
 
 ANALYSIS_FOLDER = Path("ANALYSIS")
 OUTPUT_FOLDER = Path("REGRESSION_RESULTS")
@@ -72,10 +72,12 @@ def load_and_combine():
 
 
 def prepare_dvs(df):
-    """Log-transforms both dependent variables."""
+    """Transforms both dependent variables prior to regression.
+    Unique repliers: log(x + 1) — standard transformation for non-negative counts.
+    Mean score: inverse hyperbolic sine (arcsinh) — handles negative values natively without requiring an arbitrary shift constant. 
+    """
     df["log_unique_repliers"] = np.log(df["unique_repliers"] + 1)
-    # Shift mean_score to be strictly positive before logging, since net upvote scores can be negative
-    df["log_mean_score"] = np.log(df["mean_score"] - df["mean_score"].min() + 1)
+    df["ihs_mean_score"] = np.arcsinh(df["mean_score"])
     return df
 
 
@@ -83,7 +85,7 @@ def standardise_centrality(df):
     """Z-scores each centrality measure on the pooled dataset (mean=0, sd=1)."""
     for cent in CENTRALITY_MEASURES:
         mean = df[cent].mean()
-        std = df[cent].std()
+        std  = df[cent].std()
         df[f"{cent}_z"] = (df[cent] - mean) / std
     return df
 
@@ -123,7 +125,9 @@ def run_ols(y, X, label=""):
     """Fits OLS, returns (result, llf) or (None, None) on failure."""
     X_const = sm.add_constant(X.astype(float))
     try:
-        result = sm.OLS(y, X_const).fit()
+        # HC3 heteroskedasticity-robust standard errors — appropriate
+        # given the large sample size and transformed DVs
+        result = sm.OLS(y, X_const).fit(cov_type="HC3")
         return result, result.llf
     except Exception as e:
         print(f"    [ERROR] {label}: {e}")
@@ -204,7 +208,7 @@ for cent in CENTRALITY_MEASURES:
 
 # ── Regression loop ───────────────────────────────────────────────────────────
 
-DEPENDENT_VARS = ["log_unique_repliers", "log_mean_score"]
+DEPENDENT_VARS = ["log_unique_repliers", "ihs_mean_score"]
 
 all_results = []
 all_detail_rows = []
@@ -302,11 +306,11 @@ for dv_col in DEPENDENT_VARS:
             "reference_sub": REFERENCE,
             "lrt_stat": lrt_stat, "lrt_p": lrt_p, "m3_base": base_label,
             "M1_coef": s1["coef"], "M1_se": s1["se"], "M1_pval": s1["pval"],
-            "M1_sig":  s1["sig"],  "M1_vif": s1["vif"],
+            "M1_sig": s1["sig"],  "M1_vif": s1["vif"],
             "M2_coef": s2["coef"], "M2_se": s2["se"], "M2_pval": s2["pval"],
-            "M2_sig":  s2["sig"],  "M2_vif": s2["vif"],
+            "M2_sig": s2["sig"],  "M2_vif": s2["vif"],
             "M3_coef": s3["coef"], "M3_se": s3["se"], "M3_pval": s3["pval"],
-            "M3_sig":  s3["sig"],  "M3_vif": s3["vif"],
+            "M3_sig": s3["sig"],  "M3_vif": s3["vif"],
         }
         row.update(dummy_effects)
         row.update(fit)
